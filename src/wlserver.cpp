@@ -858,36 +858,55 @@ void wlserver_send_frame_done( struct wlr_surface *surf, const struct timespec *
 	wlr_surface_send_frame_done( surf, when );
 }
 
+/* Handle the orientation of the touch inputs */
+
+void get_effective_touchscreen_orientation(double *x, double *y )
+	{
+		double tx,ty;
+
+			switch ( g_drmModeOrientation )
+		{
+				case PANEL_ORIENTATION_0:
+				tx = *x;
+				ty = *y;
+				break;
+
+				case PANEL_ORIENTATION_90:
+				tx = 1.0 - *y;
+				ty = *x;
+				break;
+
+				case PANEL_ORIENTATION_180:
+				tx = 1.0 - *x;
+				ty = 1.0 - *y;
+				break;
+
+				case PANEL_ORIENTATION_270:
+				tx = *y;
+				ty = 1.0 - *x;
+				break;
+
+				case PANEL_ORIENTATION_AUTO:
+				tx = g_bRotated ? *y : *x;
+				ty = g_bRotated ? 1.0 - *x : *y;
+				break;
+		}
+
+		*x = tx;
+		*y = ty;
+	}
+
 void wlserver_touchmotion( double x, double y, int touch_id, uint32_t time )
 {
 	if ( wlserver.mouse_focus_surface != NULL )
 	{
 		double tx = 0;
 		double ty = 0;
-		switch ( g_drmModeOrientation )
-		{
-			case PANEL_ORIENTATION_0:
-				tx = x;
-				ty = y;
-				break;
-			case PANEL_ORIENTATION_90:
-				tx = 1.0 - y;
-				ty = x;
-				break;
-			case PANEL_ORIENTATION_180:
-				tx = 1.0 - x;
-				ty = 1.0 - y;
-				break;
-			case PANEL_ORIENTATION_270:
-				tx = y;
-				ty = 1.0 - x;
-				break;
-			case PANEL_ORIENTATION_AUTO:
-			default: /* we are using the "auto" enum case to ensure compatibility for devices that were already using this*/
-				tx = g_bRotated ? y : x;
-				ty = g_bRotated ? 1.0 - x : y;
-				break;
-		}
+
+		get_effective_touchscreen_orientation(&x, &y);
+		tx = x;
+		ty = y;
+		
 		tx *= g_nOutputWidth;
 		ty *= g_nOutputHeight;
 		tx += focusedWindowOffsetX;
@@ -923,30 +942,11 @@ void wlserver_touchdown( double x, double y, int touch_id, uint32_t time )
 	{
 		double tx = 0;
 		double ty = 0;
-		switch ( g_drmModeOrientation )
-		{
-			case PANEL_ORIENTATION_0:
-				tx = x;
-				ty = y;
-				break;
-			case PANEL_ORIENTATION_90:
-				tx = 1.0 - y;
-				ty = x;
-				break;
-			case PANEL_ORIENTATION_180:
-				tx =  1.0 - x;
-				ty =  1.0 - y;
-				break;
-			case PANEL_ORIENTATION_270:
-				tx = y;
-				ty = 1.0 - x;
-				break;
-			case PANEL_ORIENTATION_AUTO:
-			default: /* we are using the "auto" enum case to ensure compatibility for devices that were already using this*/
-				tx = g_bRotated ? y : x;
-				ty = g_bRotated ? 1.0 - x : y;
-				break;
-		}
+
+		get_effective_touchscreen_orientation(&x, &y);
+		tx = x;
+		ty = y;
+
 		tx *= g_nOutputWidth;
 		ty *= g_nOutputHeight;
 		tx += focusedWindowOffsetX;
