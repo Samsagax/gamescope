@@ -1301,7 +1301,7 @@ uint64_t update_drm_effective_orientation()
 		case PANEL_ORIENTATION_270:
 			return DRM_MODE_ROTATE_270;	
 		case PANEL_ORIENTATION_AUTO:
-			return 0;
+			return DRM_MODE_ROTATE_0;
 	}
 	abort(); //Should not happen unless something went terribly wrong
 }
@@ -1896,7 +1896,7 @@ bool drm_set_connector( struct drm_t *drm, struct connector *conn )
 	drm->connector = conn;
 	drm->needs_modeset = true;
 
-	update_drm_effective_orientation();
+	g_drmEffectiveOrientation = update_drm_effective_orientation();
 
 	if (conn->props.count("panel orientation") > 0 && g_drmModeOrientation == PANEL_ORIENTATION_AUTO) 
 	{
