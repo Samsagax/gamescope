@@ -38,6 +38,8 @@ uint32_t g_nDRMFormat = DRM_FORMAT_INVALID;
 bool g_bRotated = false;
 bool g_bUseLayers = true;
 bool g_bDebugLayers = false;
+bool g_bUseQuirk = false;
+bool g_bForceOrientation = false;
 const char *g_sOutputName = nullptr;
 
 #ifndef DRM_CAP_ATOMIC_ASYNC_PAGE_FLIP
@@ -1293,12 +1295,16 @@ uint64_t update_drm_effective_orientation()
 	switch ( g_drmModeOrientation )
 	{
 		case PANEL_ORIENTATION_0:
+			g_bForceOrientation = true;
 			return DRM_MODE_ROTATE_0;
 		case PANEL_ORIENTATION_90:
+			g_bForceOrientation = true;
 			return DRM_MODE_ROTATE_90;
 		case PANEL_ORIENTATION_180:
+			g_bForceOrientation = true;
 			return DRM_MODE_ROTATE_180;
 		case PANEL_ORIENTATION_270:
+			g_bForceOrientation = true;
 			return DRM_MODE_ROTATE_270;	
 		case PANEL_ORIENTATION_AUTO:
 			return DRM_MODE_ROTATE_0;
@@ -1334,7 +1340,12 @@ drm_prepare_basic( struct drm_t *drm, const struct FrameInfo_t *frameInfo )
 
 	if ( screenType == DRM_SCREEN_TYPE_INTERNAL )
 	{
-		add_plane_property(req, drm->primary, "rotation", g_drmEffectiveOrientation);
+		if ( g_bUseQuirk ){
+			add_plane_property(req, drm->primary, "rotation", g_drmEffectiveOrientation);
+		}
+		else {
+			add_plane_property(req, drm->primary, "rotation",  g_bForceOrientation ? g_drmEffectiveOrientation : DRM_MODE_ROTATE_270);
+		}
 	}
 	else
 	{
@@ -1593,7 +1604,12 @@ drm_prepare_liftoff( struct drm_t *drm, const struct FrameInfo_t *frameInfo, boo
 
 			if ( screenType == DRM_SCREEN_TYPE_INTERNAL )
 			{
-				liftoff_layer_set_property( drm->lo_layers[ i ], "rotation", g_drmEffectiveOrientation);
+				if ( g_bUseQuirk == true ){
+					liftoff_layer_set_property( drm->lo_layers[ i ], "rotation", g_drmEffectiveOrientation);
+				}
+				else {
+					liftoff_layer_set_property( drm->lo_layers[ i ], "rotation", g_bForceOrientation ? g_drmEffectiveOrientation : DRM_MODE_ROTATE_270);
+				}
 			}
 			else
 			{
@@ -1895,6 +1911,7 @@ bool drm_set_connector( struct drm_t *drm, struct connector *conn )
 
 	drm->connector = conn;
 	drm->needs_modeset = true;
+	
 
 	g_drmEffectiveOrientation = update_drm_effective_orientation();
 
@@ -1905,23 +1922,26 @@ bool drm_set_connector( struct drm_t *drm, struct connector *conn )
 		if (strcmp(orientation, "Normal") == 0)
 		{
 			g_drmEffectiveOrientation = DRM_MODE_ROTATE_0;
+			g_bUseQuirk = true;
 		}
 		else if (strcmp(orientation, "Left Side Up") == 0)
 		{
 			g_drmEffectiveOrientation = DRM_MODE_ROTATE_90;
+			g_bUseQuirk = true;
 		}
 		else if (strcmp(orientation, "Upside Down") == 0)
 		{
 			g_drmEffectiveOrientation = DRM_MODE_ROTATE_180;
+			g_bUseQuirk = true;
 		}
 		else if (strcmp(orientation, "Right Side Up") == 0)
 		{
 			g_drmEffectiveOrientation = DRM_MODE_ROTATE_270;
+			g_bUseQuirk = true;
 		}
 		else
 		{
 			drm_log.errorf_errno("The orientation quirk wasn't found or couldn't be used. Using the default logic.");
-			g_drmEffectiveOrientation = g_bRotated ? DRM_MODE_ROTATE_270 : DRM_MODE_ROTATE_0;
 		}
 	} 
 
