@@ -47,7 +47,7 @@ void main() {
     }
 
     outputValue = encodeOutputColor(outputValue);
-    imageStore(dst, ivec2(coord), vec4(outputValue, 0));
+    imageStore(dst, ivec2(coord), vec4(outputValue, 1));
 
     // Indicator to quickly tell if we're in the compositing path or not.
     if (checkDebugFlag(compositedebug_Markers))
