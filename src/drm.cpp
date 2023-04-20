@@ -56,6 +56,8 @@ bool g_bSupportsAsyncFlips = false;
 
 enum drm_mode_generation g_drmModeGeneration = DRM_MODE_GENERATE_CVT;
 enum g_panel_orientation g_drmModeOrientation = PANEL_ORIENTATION_AUTO;
+enum g_panel_external_orientation g_drmModeExternalOrientation = PANEL_EXTERNAL_ORIENTATION_AUTO;
+enum g_panel_type g_drmPanelType = PANEL_TYPE_AUTO;
 std::atomic<uint64_t> g_drmEffectiveOrientation(DRM_MODE_ROTATE_0);
 
 bool g_bForceDisableColorMgmt = false;
@@ -1639,9 +1641,27 @@ static void update_drm_effective_orientation(struct drm_t *drm, struct connector
 	drm_screen_type screenType = drm_get_screen_type(drm);
 	if ( screenType == DRM_SCREEN_TYPE_EXTERNAL )
 	{
-		g_drmEffectiveOrientation = DRM_MODE_ROTATE_0;
+			switch ( g_drmModeExternalOrientation )
+		{
+			case PANEL_EXTERNAL_ORIENTATION_0:
+				g_drmEffectiveOrientation = DRM_MODE_ROTATE_0;
+				break;
+			case PANEL_EXTERNAL_ORIENTATION_90:
+				g_drmEffectiveOrientation = DRM_MODE_ROTATE_90;
+				break;
+			case PANEL_EXTERNAL_ORIENTATION_180:
+			g_drmEffectiveOrientation = DRM_MODE_ROTATE_180;
+				break;
+			case PANEL_EXTERNAL_ORIENTATION_270:
+				g_drmEffectiveOrientation = DRM_MODE_ROTATE_270;
+				break;
+			case PANEL_EXTERNAL_ORIENTATION_AUTO:
+				g_drmEffectiveOrientation = DRM_MODE_ROTATE_0;
+				break;
+		}
 		return;
 	}
+
 	switch ( g_drmModeOrientation )
 	{
 		case PANEL_ORIENTATION_0:
@@ -2510,11 +2530,21 @@ bool drm_get_vrr_in_use(struct drm_t *drm)
 
 drm_screen_type drm_get_connector_type(drmModeConnector *connector)
 {
-	if (connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
-		connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
-		connector->connector_type == DRM_MODE_CONNECTOR_DSI)
-		return DRM_SCREEN_TYPE_INTERNAL;
-
+	switch ( g_drmPanelType )
+	{
+		case PANEL_TYPE_INTERNAL:
+			return DRM_SCREEN_TYPE_INTERNAL;
+			break;
+		case PANEL_TYPE_EXTERNAL:
+			return DRM_SCREEN_TYPE_EXTERNAL;
+			break;
+		case PANEL_TYPE_AUTO:
+			if (connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
+					connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
+					connector->connector_type == DRM_MODE_CONNECTOR_DSI)
+					return DRM_SCREEN_TYPE_INTERNAL;
+			break;
+	}
 	return DRM_SCREEN_TYPE_EXTERNAL;
 }
 
