@@ -2001,6 +2001,13 @@ static bool is_liftoff_caching_enabled()
 	return !disabled;
 }
 
+bool g_bDisableShaperAnd3DLUT = false;
+bool g_bDisableDegamma = false;
+bool g_bDisableRegamma = false;
+bool g_bDisableBlendTF = false;
+
+bool g_bSinglePlaneOptimizations = true;
+
 static int
 drm_prepare_liftoff( struct drm_t *drm, const struct FrameInfo_t *frameInfo, bool needs_modeset )
 {
@@ -2017,6 +2024,8 @@ drm_prepare_liftoff( struct drm_t *drm, const struct FrameInfo_t *frameInfo, boo
 		if (g_LiftoffStateCache.count(entry) != 0)
 			return -EINVAL;
 	}
+
+	bool bSinglePlane = frameInfo->layerCount < 2 && g_bSinglePlaneOptimizations;
 
 	for ( int i = 0; i < k_nMaxLayers; i++ )
 	{
@@ -2068,12 +2077,29 @@ drm_prepare_liftoff( struct drm_t *drm, const struct FrameInfo_t *frameInfo, boo
 				{
 					drm_valve1_transfer_function degamma_tf = colorspace_to_plane_degamma_tf( entry.layerState[i].colorspace );
 					drm_valve1_transfer_function shaper_tf = colorspace_to_plane_shaper_tf( entry.layerState[i].colorspace );
-					liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_DEGAMMA_TF", degamma_tf );
-					liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_LUT", drm->pending.shaperlut_id[ ColorSpaceToEOTFIndex( entry.layerState[i].colorspace ) ] );
-					liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_TF", shaper_tf );
-					liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_LUT3D", drm->pending.lut3d_id[ ColorSpaceToEOTFIndex( entry.layerState[i].colorspace ) ] );
-					// Josh: See shaders/colorimetry.h colorspace_blend_tf if you have questions as to why we start doing sRGB for BLEND_TF despite potentially working in Gamma 2.2 space prior.
-					liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_BLEND_TF", drm->pending.output_tf );
+					if (!g_bDisableDegamma)
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_DEGAMMA_TF", degamma_tf );
+					else
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_DEGAMMA_TF", 0 );
+
+					if ( !g_bDisableShaperAnd3DLUT )
+					{
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_LUT", drm->pending.shaperlut_id[ ColorSpaceToEOTFIndex( entry.layerState[i].colorspace ) ] );
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_TF", shaper_tf );
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_LUT3D", drm->pending.lut3d_id[ ColorSpaceToEOTFIndex( entry.layerState[i].colorspace ) ] );
+						// Josh: See shaders/colorimetry.h colorspace_blend_tf if you have questions as to why we start doing sRGB for BLEND_TF despite potentially working in Gamma 2.2 space prior.
+					}
+					else
+					{
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_LUT", 0 );
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_SHAPER_TF", 0 );
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_LUT3D", 0 );
+					}
+
+					if (!g_bDisableBlendTF && !bSinglePlane)
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_BLEND_TF", drm->pending.output_tf );
+					else
+						liftoff_layer_set_property( drm->lo_layers[ i ], "VALVE1_PLANE_BLEND_TF", 0 );
 				}
 			}
 			else
@@ -2185,11 +2211,20 @@ int drm_prepare( struct drm_t *drm, bool async, const struct FrameInfo_t *frameI
 		}
 	}
 
+	bool bSinglePlane = frameInfo->layerCount < 2 && g_bSinglePlaneOptimizations;
+
 	if ( drm_supports_color_mgmt( &g_DRM ) && frameInfo->applyOutputColorMgmt )
 	{
-		drm->pending.output_tf = g_bOutputHDREnabled
-			? DRM_VALVE1_TRANSFER_FUNCTION_PQ
-			: DRM_VALVE1_TRANSFER_FUNCTION_SRGB;
+		if ( !g_bDisableRegamma && !bSinglePlane )
+		{
+			drm->pending.output_tf = g_bOutputHDREnabled
+				? DRM_VALVE1_TRANSFER_FUNCTION_PQ
+				: DRM_VALVE1_TRANSFER_FUNCTION_SRGB;
+		}
+		else
+		{
+			drm->pending.output_tf = DRM_VALVE1_TRANSFER_FUNCTION_DEFAULT;
+		}
 	}
 	else
 	{
