@@ -1661,6 +1661,11 @@ static void update_drm_effective_orientation(struct drm_t *drm, struct connector
 		}
 		return;
 	}
+	else if ( screenType == DRM_SCREEN_TYPE_EXTERNAL )
+	{
+		g_drmEffectiveOrientation = DRM_MODE_ROTATE_0;
+		return;
+	}
 
 	switch ( g_drmModeOrientation )
 	{
