@@ -114,6 +114,7 @@ const struct option *gamescope_options = (struct option[]){
 	{ "force-panel-type", required_argument, nullptr, 0 },
 	{ "force-windows-fullscreen", no_argument, nullptr, 0 },
 
+	{ "disable-color-management", no_argument, nullptr, 0 },
 	{ "hdr-enabled", no_argument, nullptr, 0 },
 	{ "hdr-sdr-content-nits", required_argument, nullptr, 0 },
 	{ "hdr-wide-gammut-for-sdr", no_argument, nullptr, 0 },
@@ -207,6 +208,7 @@ const char usage[] =
 	"  --debug-events                 debug X11 events\n"
 	"  --force-composition            disable direct scan-out\n"
 	"  --composite-debug              draw frame markers on alternating corners of the screen when compositing\n"
+	"  --disable-color-management     disable color management\n"
 	"  --disable-xres                 disable XRes for PID lookup\n"
 	"  --hdr-debug-force-support      forces support for HDR, etc even if the display doesn't support it. HDR clients will be outputted as SDR still in that case.\n"
 	"  --hdr-debug-force-output       forces support and output to HDR10 PQ even if the output does not support it (will look very wrong if it doesn't)\n"
@@ -514,6 +516,8 @@ int main(int argc, char **argv)
 					g_bUseLayers = false;
 				} else if (strcmp(opt_name, "debug-layers") == 0) {
 					g_bDebugLayers = true;
+				} else if (strcmp(opt_name, "disable-color-management") == 0) {
+					g_bForceDisableColorMgmt = true;
 				} else if (strcmp(opt_name, "xwayland-count") == 0) {
 					g_nXWaylandCount = atoi( optarg );
 				} else if (strcmp(opt_name, "composite-debug") == 0) {

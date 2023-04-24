@@ -2280,8 +2280,10 @@ paint_all(bool async)
 
 	for (uint32_t i = 0; i < EOTF_Count; i++)
 	{
-		frameInfo.shaperLut[i] = g_ColorMgmtLuts[i].vk_lut1d;
-		frameInfo.lut3D[i] = g_ColorMgmtLuts[i].vk_lut3d;
+		if (!g_ColorMgmtLuts[i].lut1d.empty())
+			frameInfo.shaperLut[i] = g_ColorMgmtLuts[i].vk_lut1d;
+		if (!g_ColorMgmtLuts[i].lut3d.empty())
+			frameInfo.lut3D[i] = g_ColorMgmtLuts[i].vk_lut3d;
 	}
 
 	if ( !BIsNested() && g_bOutputHDREnabled )
@@ -3923,7 +3925,7 @@ get_win_pid(xwayland_ctx_t *ctx, Window id)
 static void
 add_win(xwayland_ctx_t *ctx, Window id, Window prev, unsigned long sequence)
 {
-	steamcompmgr_win_t				*new_win = new steamcompmgr_win_t;
+	steamcompmgr_win_t				*new_win = new steamcompmgr_win_t{};
 	steamcompmgr_win_t				**p;
 
 	if (!new_win)
