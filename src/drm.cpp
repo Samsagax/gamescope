@@ -2573,6 +2573,8 @@ bool drm_get_vrr_in_use(struct drm_t *drm)
 
 drm_screen_type drm_get_connector_type(drmModeConnector *connector)
 {
+	// Set to the default state of false to make sure the external display isn't rotated when a system is docked
+	g_bDisplayTypeInternal = false;
 	switch ( g_drmPanelType )
 	{
 		case PANEL_TYPE_INTERNAL:
